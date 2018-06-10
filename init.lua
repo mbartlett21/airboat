@@ -1,8 +1,4 @@
-local function is_water(pos)
-	local nn = minetest.get_node(pos).name
-	return minetest.get_item_group(nn, "water") ~= 0
-end
-
+-- Functions
 
 local function get_sign(i)
 	if i == 0 then
@@ -24,6 +20,8 @@ local function get_v(v)
 	return math.sqrt(v.x ^ 2 + v.z ^ 2)
 end
 
+
+-- Airboat entity
 
 local airboat = {
 	physical = true,
@@ -64,7 +62,7 @@ function airboat.on_rightclick(self, clicker)
 		end
 		self.driver = clicker
 		clicker:set_attach(self.object, "",
-			{x = 0, y = -1, z = 0}, {x = 0, y = 0, z = 0})
+			{x = 0, y = -14.25, z = -1}, {x = 0, y = 0, z = 0})
 		player_api.player_attached[name] = true
 		minetest.after(0.2, function()
 			player_api.set_animation(clicker, "sit" , 30)
@@ -124,14 +122,12 @@ function airboat.on_step(self, dtime)
 			self.object:setyaw(yaw - (1 + dtime) * 0.02)
 		end
 		if ctrl.jump then
-			self.vy = self.vy + 0.075
+			self.vy = self.vy + 0.1
 		elseif ctrl.sneak then
-			self.vy = self.vy - 0.075
+			self.vy = self.vy - 0.1
 		end
 	end
-	local velo = self.object:getvelocity()
-	if self.v == 0 and self.vy == 0 and
-			velo.x == 0 and velo.y == 0 and velo.z == 0 then
+	if self.v == 0 and self.vy == 0 then
 		self.object:setpos(self.object:getpos())
 		return
 	end
@@ -146,7 +142,7 @@ function airboat.on_step(self, dtime)
 	end
 
 	local sy = get_sign(self.vy)
-	self.vy = self.vy - 0.04 * sy
+	self.vy = self.vy - 0.03 * sy
 	if sy ~= get_sign(self.vy) then
 		self.vy = 0
 	end
@@ -157,8 +153,9 @@ function airboat.on_step(self, dtime)
 	local new_acce = {x = 0, y = 0, z = 0}
 	local p = self.object:getpos()
 	p.y = p.y - 1.5
-	if is_water(p) then
-		new_acce = {x = 0, y = 20, z = 0}
+	local def = minetest.registered_nodes[minetest.get_node(p).name]
+	if def and (def.liquidtype == "source" or def.liquidtype == "flowing") then
+		new_acce = {x = 0, y = 10, z = 0}
 	end
 
 	self.object:setpos(self.object:getpos())
@@ -171,12 +168,13 @@ end
 minetest.register_entity("airboat:airboat", airboat)
 
 
+-- Craftitem
+
 minetest.register_craftitem("airboat:airboat", {
 	description = "Airboat",
 	inventory_image = "airboat_airboat_inv.png",
 	wield_scale = {x = 4, y = 4, z = 4},
 	liquids_pointable = true,
-	groups = {flammable = 2},
 
 	on_place = function(itemstack, placer, pointed_thing)
 		local under = pointed_thing.under
@@ -193,10 +191,11 @@ minetest.register_craftitem("airboat:airboat", {
 			return itemstack
 		end
 		pointed_thing.under.y = pointed_thing.under.y + 2
-		boat = minetest.add_entity(pointed_thing.under, "airboat:airboat")
-		if boat then
+		local airboat = minetest.add_entity(pointed_thing.under,
+			"airboat:airboat")
+		if airboat then
 			if placer then
-				boat:setyaw(placer:get_look_horizontal())
+				airboat:setyaw(placer:get_look_horizontal())
 			end
 			local player_name = placer and placer:get_player_name() or ""
 			if not (creative and creative.is_enabled_for and
@@ -208,6 +207,8 @@ minetest.register_craftitem("airboat:airboat", {
 	end,
 })
 
+
+-- Nodebox for entity wielditem visual
 
 minetest.register_node("airboat:airboat_nodebox", {
 	description = "Airboat Nodebox",
@@ -223,7 +224,7 @@ minetest.register_node("airboat:airboat_nodebox", {
 	drawtype = "nodebox",
 	node_box = {
 		type = "fixed",
-		fixed = { -- widmin heimin lenmin widmax heimax lenmax
+		fixed = { -- widmin heimin lenmin  widmax heimax lenmax
 			{-0.271, -0.167, -0.5,  0.271, 0.375, 0.5}, -- Envelope
 			{-0.167, -0.5, -0.25,   0.167, -0.167, 0.25}, -- Gondola
 			{-0.021, 0.375, -0.5,   0.021, 0.5, -0.25}, -- Top fin
