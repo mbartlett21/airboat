@@ -1,4 +1,4 @@
-airboat 0.1.1 by paramat
+airboat 0.1.2 by paramat
 For Minetest 0.5.0dev (of 10/06/18) and later
 Depends default
 

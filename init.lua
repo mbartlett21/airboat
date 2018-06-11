@@ -31,9 +31,10 @@ local airboat = {
 	textures = {"airboat:airboat_nodebox"},
 
 	driver = nil,
+	removed = false,
 	v = 0,
 	vy = 0,
-	removed = false
+	auto = false,
 }
 
 
@@ -42,8 +43,10 @@ function airboat.on_rightclick(self, clicker)
 		return
 	end
 	local name = clicker:get_player_name()
+	-- Detach
 	if self.driver and clicker == self.driver then
 		self.driver = nil
+		self.auto = false
 		clicker:set_detach()
 		player_api.player_attached[name] = false
 		player_api.set_animation(clicker, "stand" , 30)
@@ -51,6 +54,7 @@ function airboat.on_rightclick(self, clicker)
 		minetest.after(0.1, function()
 			clicker:setpos(pos)
 		end)
+	-- Attach
 	elseif not self.driver then
 		local attach = clicker:get_attach()
 		if attach and attach:get_luaentity() then
@@ -62,7 +66,7 @@ function airboat.on_rightclick(self, clicker)
 		end
 		self.driver = clicker
 		clicker:set_attach(self.object, "",
-			{x = 0, y = -14.25, z = -1}, {x = 0, y = 0, z = 0})
+			{x = 0, y = -2, z = 0}, {x = 0, y = 0, z = 0})
 		player_api.player_attached[name] = true
 		minetest.after(0.2, function()
 			player_api.set_animation(clicker, "sit" , 30)
@@ -97,7 +101,6 @@ function airboat.on_punch(self, puncher)
 				minetest.add_item(self.object:getpos(), leftover)
 			end
 		end
-		-- Delay remove to ensure player is detached
 		minetest.after(0.1, function()
 			self.object:remove()
 		end)
@@ -109,24 +112,32 @@ function airboat.on_step(self, dtime)
 	self.v = get_v(self.object:getvelocity()) * get_sign(self.v)
 	self.vy = self.object:getvelocity().y
 	if self.driver then
-		local ctrl = self.driver:get_player_control()
 		local yaw = self.object:getyaw()
-		if ctrl.up then
-			self.v = self.v + 0.1
+		local ctrl = self.driver:get_player_control()
+		if ctrl.up and ctrl.down then
+			if not self.auto then
+				self.auto = true
+			end
 		elseif ctrl.down then
 			self.v = self.v - 0.1
+			if self.auto then
+				self.auto = false
+			end
+		elseif ctrl.up or self.auto then
+			self.v = self.v + 0.1
 		end
 		if ctrl.left then
-			self.object:setyaw(yaw + (1 + dtime) * 0.02)
+			self.object:setyaw(yaw + (1 + dtime) * 0.015)
 		elseif ctrl.right then
-			self.object:setyaw(yaw - (1 + dtime) * 0.02)
+			self.object:setyaw(yaw - (1 + dtime) * 0.015)
 		end
 		if ctrl.jump then
-			self.vy = self.vy + 0.1
+			self.vy = self.vy + 0.075
 		elseif ctrl.sneak then
-			self.vy = self.vy - 0.1
+			self.vy = self.vy - 0.075
 		end
 	end
+
 	if self.v == 0 and self.vy == 0 then
 		self.object:setpos(self.object:getpos())
 		return
@@ -225,12 +236,12 @@ minetest.register_node("airboat:airboat_nodebox", {
 	node_box = {
 		type = "fixed",
 		fixed = { -- widmin heimin lenmin  widmax heimax lenmax
-			{-0.271, -0.167, -0.5,  0.271, 0.375, 0.5}, -- Envelope
-			{-0.167, -0.5, -0.25,   0.167, -0.167, 0.25}, -- Gondola
-			{-0.021, 0.375, -0.5,   0.021, 0.5, -0.25}, -- Top fin
-			{-0.021, -0.292, -0.5,  0.021, -0.167, -0.25}, -- Base fin
-			{-0.396, 0.083, -0.5,   -0.271, 0.125, -0.25}, -- Left fin
-			{0.271, 0.083, -0.5,    0.396, 0.125, -0.25}, -- Right fin
+			{-0.271, -0.167, -0.5,     0.271,  0.375,  0.5},  -- Envelope
+			{-0.167, -0.5,   -0.25,    0.167, -0.167,  0.25}, -- Gondola
+			{-0.021,  0.375, -0.5,     0.021,  0.5,   -0.25}, -- Top fin
+			{-0.021, -0.292, -0.5,     0.021, -0.167, -0.25}, -- Base fin
+			{-0.396,  0.083, -0.5,    -0.271,  0.125, -0.25}, -- Left fin
+			{ 0.271,  0.083, -0.5,     0.396,  0.125, -0.25}, -- Right fin
 		},
 	},
 	groups = {not_in_creative_inventory = 1},
