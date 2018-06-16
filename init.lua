@@ -33,6 +33,7 @@ local airboat = {
 	driver = nil,
 	removed = false,
 	v = 0,
+	rot = 0,
 	vy = 0,
 	auto = false,
 }
@@ -48,8 +49,8 @@ function airboat.on_rightclick(self, clicker)
 		self.driver = nil
 		self.auto = false
 		clicker:set_detach()
-		player_api.player_attached[name] = false
-		player_api.set_animation(clicker, "stand" , 30)
+		default.player_attached[name] = false
+		default.player_set_animation(clicker, "stand" , 30)
 		local pos = clicker:getpos()
 		minetest.after(0.1, function()
 			clicker:setpos(pos)
@@ -67,9 +68,9 @@ function airboat.on_rightclick(self, clicker)
 		self.driver = clicker
 		clicker:set_attach(self.object, "",
 			{x = 0, y = -2, z = 0}, {x = 0, y = 0, z = 0})
-		player_api.player_attached[name] = true
+		default.player_attached[name] = true
 		minetest.after(0.2, function()
-			player_api.set_animation(clicker, "sit" , 30)
+			default.player_set_animation(clicker, "sit" , 30)
 		end)
 		clicker:set_look_horizontal(self.object:getyaw())
 	end
@@ -88,7 +89,7 @@ function airboat.on_punch(self, puncher)
 	if self.driver and puncher == self.driver then
 		self.driver = nil
 		puncher:set_detach()
-		player_api.player_attached[puncher:get_player_name()] = false
+		default.player_attached[puncher:get_player_name()] = false
 	end
 	if not self.driver then
 		self.removed = true
@@ -112,24 +113,28 @@ function airboat.on_step(self, dtime)
 	self.v = get_v(self.object:getvelocity()) * get_sign(self.v)
 	self.vy = self.object:getvelocity().y
 	if self.driver then
-		local yaw = self.object:getyaw()
+		local driver_name = self.driver:get_player_name()
 		local ctrl = self.driver:get_player_control()
 		if ctrl.up and ctrl.down then
 			if not self.auto then
 				self.auto = true
+				minetest.chat_send_player(driver_name,
+					"[airboat] Cruise on")
 			end
 		elseif ctrl.down then
 			self.v = self.v - 0.1
 			if self.auto then
 				self.auto = false
+				minetest.chat_send_player(driver_name,
+					"[airboat] Cruise off")
 			end
 		elseif ctrl.up or self.auto then
 			self.v = self.v + 0.1
 		end
 		if ctrl.left then
-			self.object:setyaw(yaw + (1 + dtime) * 0.015)
+			self.rot = self.rot + 0.001
 		elseif ctrl.right then
-			self.object:setyaw(yaw - (1 + dtime) * 0.015)
+			self.rot = self.rot - 0.001
 		end
 		if ctrl.jump then
 			self.vy = self.vy + 0.075
@@ -138,7 +143,7 @@ function airboat.on_step(self, dtime)
 		end
 	end
 
-	if self.v == 0 and self.vy == 0 then
+	if self.v == 0 and self.rot == 0 and self.vy == 0 then
 		self.object:setpos(self.object:getpos())
 		return
 	end
@@ -150,6 +155,15 @@ function airboat.on_step(self, dtime)
 	end
 	if math.abs(self.v) > 6 then
 		self.v = 6 * get_sign(self.v)
+	end
+
+	local sr = get_sign(self.rot)
+	self.rot = self.rot - 0.0003 * sr
+	if sr ~= get_sign(self.rot) then
+		self.rot = 0
+	end
+	if math.abs(self.rot) > 0.015 then
+		self.rot = 0.015 * get_sign(self.rot)
 	end
 
 	local sy = get_sign(self.vy)
@@ -170,9 +184,9 @@ function airboat.on_step(self, dtime)
 	end
 
 	self.object:setpos(self.object:getpos())
-	local new_velo = get_velocity(self.v, self.object:getyaw(), self.vy)
-	self.object:setvelocity(new_velo)
+	self.object:setvelocity(get_velocity(self.v, self.object:getyaw(), self.vy))
 	self.object:setacceleration(new_acce)
+	self.object:setyaw(self.object:getyaw() + (1 + dtime) * self.rot)
 end
 
 
@@ -235,7 +249,7 @@ minetest.register_node("airboat:airboat_nodebox", {
 	drawtype = "nodebox",
 	node_box = {
 		type = "fixed",
-		fixed = { -- widmin heimin lenmin  widmax heimax lenmax
+		fixed = { -- widmin heimin lenmin    widmax heimax lenmax
 			{-0.271, -0.167, -0.5,     0.271,  0.375,  0.5},  -- Envelope
 			{-0.167, -0.5,   -0.25,    0.167, -0.167,  0.25}, -- Gondola
 			{-0.021,  0.375, -0.5,     0.021,  0.5,   -0.25}, -- Top fin
