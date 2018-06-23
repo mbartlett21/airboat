@@ -1,4 +1,4 @@
-airboat 0.1.3 by paramat
+airboat 0.1.4 by paramat
 For Minetest 0.4.16 and later
 Depends: default
 
@@ -6,6 +6,13 @@ Licenses
 --------
 Source code: MIT
 Media (textures): CC0 1.0
+
+Please note
+-----------
+This mod is fully functional but does not currently have a crafting recipe or
+proper textures. The airboat is available in the creative inventory.
+It is currently a 'kit mod' for you to add to. The textures are templates for
+you to add detail to.
 
 Controls
 --------
