@@ -25,6 +25,7 @@ end
 
 local airboat = {
 	physical = true,
+	collide_with_objects = false, -- Workaround fix for a MT engine bug
 	collisionbox = {-0.85, -1.5, -0.85, 0.85, 1.5, 0.85},
 	visual = "wielditem",
 	visual_size = {x = 2.0, y = 2.0}, -- Scale up of nodebox is these * 1.5
@@ -44,8 +45,8 @@ function airboat.on_rightclick(self, clicker)
 		return
 	end
 	local name = clicker:get_player_name()
-	-- Detach
 	if self.driver and clicker == self.driver then
+		-- Detach
 		self.driver = nil
 		self.auto = false
 		clicker:set_detach()
@@ -55,8 +56,8 @@ function airboat.on_rightclick(self, clicker)
 		minetest.after(0.1, function()
 			clicker:setpos(pos)
 		end)
-	-- Attach
 	elseif not self.driver then
+		-- Attach
 		local attach = clicker:get_attach()
 		if attach and attach:get_luaentity() then
 			local luaentity = attach:get_luaentity()
@@ -87,11 +88,13 @@ function airboat.on_punch(self, puncher)
 		return
 	end
 	if self.driver and puncher == self.driver then
+		-- Detach
 		self.driver = nil
 		puncher:set_detach()
 		default.player_attached[puncher:get_player_name()] = false
 	end
 	if not self.driver then
+		-- Move to inventory
 		self.removed = true
 		local inv = puncher:get_inventory()
 		if not (creative and creative.is_enabled_for
