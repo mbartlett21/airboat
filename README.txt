@@ -1,5 +1,5 @@
-airboat 0.1.5 by paramat
-For Minetest 0.4.16 and later
+airboat 0.1.6 by paramat
+For Minetest 0.4.16 and later. Compatible with MT 5.0.0-dev.
 Depends: default
 
 Licenses
@@ -7,12 +7,19 @@ Licenses
 Source code: MIT
 Media (textures): CC0 1.0
 
-Intentionally incomplete
-------------------------
+Note about textures and crafting
+--------------------------------
 This mod is fully functional but does not currently have a crafting recipe or
-proper textures. The airboat is available in the creative inventory.
-It is currently a 'kit mod' for you to complete. The textures are templates for
-you to add detail to.
+detailed textures. It is currently a 'kit mod' for you to complete. The textures
+are templates for you to add detail to.
+The airboat is available in the creative inventory or by using the /giveme chat
+command.
+
+Usage
+-----
+Third-person camera mode is recommended when travelling for a better view.
+The airboat can be placed on any node, including liquids. It can land on, and
+will float in, a liquid.
 
 Controls
 --------

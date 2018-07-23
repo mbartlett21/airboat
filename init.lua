@@ -31,11 +31,12 @@ local airboat = {
 	visual_size = {x = 2.0, y = 2.0}, -- Scale up of nodebox is these * 1.5
 	textures = {"airboat:airboat_nodebox"},
 
+	-- Mod-added properties
 	driver = nil,
 	removed = false,
 	v = 0,
-	rot = 0,
 	vy = 0,
+	rot = 0,
 	auto = false,
 }
 
@@ -45,7 +46,7 @@ function airboat.on_rightclick(self, clicker)
 		return
 	end
 	local name = clicker:get_player_name()
-	if self.driver and clicker == self.driver then
+	if self.driver and name == self.driver then
 		-- Detach
 		self.driver = nil
 		self.auto = false
@@ -66,7 +67,7 @@ function airboat.on_rightclick(self, clicker)
 			end
 			clicker:set_detach()
 		end
-		self.driver = clicker
+		self.driver = name
 		clicker:set_attach(self.object, "",
 			{x = 0, y = -2, z = 0}, {x = 0, y = 0, z = 0})
 		default.player_attached[name] = true
@@ -87,18 +88,20 @@ function airboat.on_punch(self, puncher)
 	if not puncher or not puncher:is_player() or self.removed then
 		return
 	end
-	if self.driver and puncher == self.driver then
+
+	local name = puncher:get_player_name()
+	if self.driver and name == self.driver then
 		-- Detach
 		self.driver = nil
 		puncher:set_detach()
-		default.player_attached[puncher:get_player_name()] = false
+		default.player_attached[name] = false
 	end
 	if not self.driver then
 		-- Move to inventory
 		self.removed = true
 		local inv = puncher:get_inventory()
 		if not (creative and creative.is_enabled_for
-				and creative.is_enabled_for(puncher:get_player_name()))
+				and creative.is_enabled_for(name))
 				or not inv:contains_item("main", "airboat:airboat") then
 			local leftover = inv:add_item("main", "airboat:airboat")
 			if not leftover:is_empty() then
@@ -115,42 +118,53 @@ end
 function airboat.on_step(self, dtime)
 	self.v = get_v(self.object:getvelocity()) * get_sign(self.v)
 	self.vy = self.object:getvelocity().y
+
+	-- Controls
 	if self.driver then
-		local driver_name = self.driver:get_player_name()
-		local ctrl = self.driver:get_player_control()
-		if ctrl.up and ctrl.down then
-			if not self.auto then
-				self.auto = true
-				minetest.chat_send_player(driver_name,
-					"[airboat] Cruise on")
+		local driver_objref = minetest.get_player_by_name(self.driver)
+		if driver_objref then
+			local ctrl = driver_objref:get_player_control()
+			if ctrl.up and ctrl.down then
+				if not self.auto then
+					self.auto = true
+					minetest.chat_send_player(self.driver,
+						"[airboat] Cruise on")
+				end
+			elseif ctrl.down then
+				self.v = self.v - 0.1
+				if self.auto then
+					self.auto = false
+					minetest.chat_send_player(self.driver,
+						"[airboat] Cruise off")
+				end
+			elseif ctrl.up or self.auto then
+				self.v = self.v + 0.1
 			end
-		elseif ctrl.down then
-			self.v = self.v - 0.1
-			if self.auto then
-				self.auto = false
-				minetest.chat_send_player(driver_name,
-					"[airboat] Cruise off")
+			if ctrl.left then
+				self.rot = self.rot + 0.001
+			elseif ctrl.right then
+				self.rot = self.rot - 0.001
 			end
-		elseif ctrl.up or self.auto then
-			self.v = self.v + 0.1
-		end
-		if ctrl.left then
-			self.rot = self.rot + 0.001
-		elseif ctrl.right then
-			self.rot = self.rot - 0.001
-		end
-		if ctrl.jump then
-			self.vy = self.vy + 0.075
-		elseif ctrl.sneak then
-			self.vy = self.vy - 0.075
+			if ctrl.jump then
+				self.vy = self.vy + 0.075
+			elseif ctrl.sneak then
+				self.vy = self.vy - 0.075
+			end
+		else
+			-- Player left server while driving
+			-- In MT 5.0.0 use 'airboat:on_detach_child()' to do this
+			self.driver = nil
+			self.auto = false
 		end
 	end
 
+	-- Early return for stationary vehicle
 	if self.v == 0 and self.rot == 0 and self.vy == 0 then
 		self.object:setpos(self.object:getpos())
 		return
 	end
 
+	-- Reduction and limiting of linear speed
 	local s = get_sign(self.v)
 	self.v = self.v - 0.02 * s
 	if s ~= get_sign(self.v) then
@@ -160,6 +174,7 @@ function airboat.on_step(self, dtime)
 		self.v = 6 * get_sign(self.v)
 	end
 
+	-- Reduction and limiting of rotation
 	local sr = get_sign(self.rot)
 	self.rot = self.rot - 0.0003 * sr
 	if sr ~= get_sign(self.rot) then
@@ -169,6 +184,7 @@ function airboat.on_step(self, dtime)
 		self.rot = 0.015 * get_sign(self.rot)
 	end
 
+	-- Reduction and limiting of vertical speed
 	local sy = get_sign(self.vy)
 	self.vy = self.vy - 0.03 * sy
 	if sy ~= get_sign(self.vy) then
@@ -179,6 +195,7 @@ function airboat.on_step(self, dtime)
 	end
 
 	local new_acce = {x = 0, y = 0, z = 0}
+	-- Bouyancy in liquids
 	local p = self.object:getpos()
 	p.y = p.y - 1.5
 	local def = minetest.registered_nodes[minetest.get_node(p).name]
@@ -208,6 +225,8 @@ minetest.register_craftitem("airboat:airboat", {
 		local under = pointed_thing.under
 		local node = minetest.get_node(under)
 		local udef = minetest.registered_nodes[node.name]
+
+		-- Run any on_rightclick function of pointed node instead
 		if udef and udef.on_rightclick and
 				not (placer and placer:is_player() and
 				placer:get_player_control().sneak) then
@@ -218,6 +237,7 @@ minetest.register_craftitem("airboat:airboat", {
 		if pointed_thing.type ~= "node" then
 			return itemstack
 		end
+
 		pointed_thing.under.y = pointed_thing.under.y + 2
 		local airboat = minetest.add_entity(pointed_thing.under,
 			"airboat:airboat")
@@ -240,7 +260,7 @@ minetest.register_craftitem("airboat:airboat", {
 
 minetest.register_node("airboat:airboat_nodebox", {
 	description = "Airboat Nodebox",
-	tiles = { -- top base right left front back
+	tiles = { -- Top, base, right, left, front, back
 		"airboat_airboat_top.png",
 		"airboat_airboat_base.png",
 		"airboat_airboat_right.png",
@@ -252,7 +272,7 @@ minetest.register_node("airboat:airboat_nodebox", {
 	drawtype = "nodebox",
 	node_box = {
 		type = "fixed",
-		fixed = { -- widmin heimin lenmin    widmax heimax lenmax
+		fixed = { -- Widmin, heimin, lenmin, widmax, heimax, lenmax
 			{-0.271, -0.167, -0.5,     0.271,  0.375,  0.5},  -- Envelope
 			{-0.167, -0.5,   -0.25,    0.167, -0.167,  0.25}, -- Gondola
 			{-0.021,  0.375, -0.5,     0.021,  0.5,   -0.25}, -- Top fin
