@@ -24,14 +24,16 @@ end
 -- Airboat entity
 
 local airboat = {
-	physical = true,
-	collide_with_objects = false, -- Workaround fix for a MT engine bug
-	collisionbox = {-0.85, -1.5, -0.85, 0.85, 1.5, 0.85},
-	visual = "wielditem",
-	visual_size = {x = 2.0, y = 2.0}, -- Scale up of nodebox is these * 1.5
-	textures = {"airboat:airboat_nodebox"},
+		initial_properties = {
+		physical = true,
+		collide_with_objects = false, -- Workaround fix for a MT engine bug
+		collisionbox = {-0.85, -1.5, -0.85, 0.85, 1.5, 0.85},
+		visual = "wielditem",
+		visual_size = {x = 2.0, y = 2.0}, -- Scale up of nodebox is these * 1.5
+		textures = {"airboat:airboat_nodebox"},
+	},
 
-	-- Mod-added properties
+	-- Custom fields
 	driver = nil,
 	removed = false,
 	v = 0,
@@ -155,6 +157,9 @@ function airboat.on_step(self, dtime)
 			-- In MT 5.0.0 use 'airboat:on_detach_child()' to do this
 			self.driver = nil
 			self.auto = false
+			minetest.log("warning", "[airboat] Driver left server while" ..
+				" driving. This may cause some 'Pushing ObjectRef to" ..
+				" removed/deactivated object' warnings.")
 		end
 	end
 

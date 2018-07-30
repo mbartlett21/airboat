@@ -1,17 +1,16 @@
-airboat 0.1.6 by paramat
+airboat 0.1.7 by paramat
 For Minetest 0.4.16 and later. Compatible with MT 5.0.0-dev.
 Depends: default
 
 Licenses
 --------
 Source code: MIT
-Media (textures): CC0 1.0
+Media (textures and nodebox design): CC0 1.0
 
 Note about textures and crafting
 --------------------------------
 This mod is fully functional but does not currently have a crafting recipe or
-detailed textures. It is currently a 'kit mod' for you to complete. The textures
-are templates for you to add detail to.
+detailed textures. The textures are templates for you to add detail to.
 The airboat is available in the creative inventory or by using the /giveme chat
 command.
 
