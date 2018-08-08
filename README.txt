@@ -1,4 +1,4 @@
-airboat 0.1.7 by paramat
+airboat 0.1.8 by paramat
 For Minetest 0.4.16 and later. Compatible with MT 5.0.0-dev.
 Depends: default
 
