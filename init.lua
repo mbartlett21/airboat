@@ -202,7 +202,7 @@ function airboat_entity.on_step(self, dtime)
 	local new_acce = {x = 0, y = 0, z = 0}
 	-- Bouyancy in liquids
 	local p = self.object:getpos()
-	p.y = p.y - 1.5
+	p.y = p.y - 2
 	local def = minetest.registered_nodes[minetest.get_node(p).name]
 	if def and (def.liquidtype == "source" or def.liquidtype == "flowing") then
 		new_acce = {x = 0, y = 10, z = 0}
@@ -223,7 +223,7 @@ minetest.register_entity("airboat:airboat", airboat_entity)
 minetest.register_craftitem("airboat:airboat", {
 	description = "Airboat",
 	inventory_image = "airboat_airboat_inv.png",
-	wield_scale = {x = 4, y = 4, z = 4},
+	wield_scale = {x = 2, y = 2, z = 2},
 	liquids_pointable = true,
 
 	on_place = function(itemstack, placer, pointed_thing)
@@ -243,21 +243,19 @@ minetest.register_craftitem("airboat:airboat", {
 			return itemstack
 		end
 
-		pointed_thing.under.y = pointed_thing.under.y + 2
+		pointed_thing.under.y = pointed_thing.under.y + 2.5
 		local airboat = minetest.add_entity(pointed_thing.under,
 			"airboat:airboat")
 		if airboat then
 			if placer then
 				airboat:setyaw(placer:get_look_horizontal())
 			end
-			local player_name = placer and placer:get_player_name() or ""
-			if not (creative and creative.is_enabled_for and
-					creative.is_enabled_for(player_name)) then
-				itemstack:take_item()
-			end
+			creative.take_from_inventory(placer, itemstack)
 		end
 		return itemstack
 	end,
+	stack_max = 1,
+	groups = { creative = 1 }
 })
 
 
@@ -277,13 +275,14 @@ minetest.register_node("airboat:airboat_nodebox", {
 	drawtype = "nodebox",
 	node_box = {
 		type = "fixed",
-		fixed = { -- Widmin, heimin, lenmin, widmax, heimax, lenmax
-			{-0.271, -0.167, -0.5,     0.271,  0.375,  0.5},  -- Envelope
-			{-0.167, -0.5,   -0.25,    0.167, -0.167,  0.25}, -- Gondola
-			{-0.021,  0.375, -0.5,     0.021,  0.5,   -0.25}, -- Top fin
-			{-0.021, -0.292, -0.5,     0.021, -0.167, -0.25}, -- Base fin
-			{-0.396,  0.083, -0.5,    -0.271,  0.125, -0.25}, -- Left fin
-			{ 0.271,  0.083, -0.5,     0.396,  0.125, -0.25}, -- Right fin
+		fixed = {
+			-- Wmin,  hmin,  lmin, wmax,  hmax,  lmax
+			{ -5/16, -1/8,  -1/2,  5/16,  3/8,   1/2 }, -- Envelope
+			{ -3/16, -1/2,  -1/4,  3/16, -1/8,   1/4 }, -- Gondola
+			{ -1/32,  3/8,  -1/2,  1/32,  1/2,  -1/4 }, -- Top fin
+			{ -1/32, -1/4,  -1/2,  1/32, -1/8,  -1/4 }, -- Base fin
+			{ -7/16,  3/32, -1/2, -5/16,  5/32, -1/4 }, -- Left fin
+			{  5/16,  3/32, -1/2,  7/16,  5/32, -1/4 }, -- Right fin
 		},
 	},
 	groups = {not_in_creative_inventory = 1},
