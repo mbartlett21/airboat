@@ -135,7 +135,42 @@ function airboat_entity:on_punch(puncher)
     end
 end
 
+airboat = {}
 
+airboat.player_targets = {}
+
+function airboat.go(player, location)
+    minetest.log("info", "[airboat] " .. player .. " is going to (" .. location.x .. ", " .. location.z .. ")")
+    airboat.player_targets[player] = location
+end
+
+function airboat.cancel_go(player)
+    minetest.log("info", "[airboat] " .. player .. " is going nowhere")
+    airboat.player_targets[player] = nil
+end
+
+-- If we have the sethome2 mod, have a way to drive to a home.
+if sethome then
+    minetest.register_chatcommand("drivehome", {
+            description = "Drive you to your home point",
+            privs = { home = true },
+            func = function(name, param)
+                name = name or "" -- fallback to blank name if nil
+                local number = param and tonumber(param) or 1
+                local player = minetest.get_player_by_name(name)
+                if not player then
+                    return false, "Player not found!"
+                end
+                local home = sethome.get(player, number)
+                if home then
+                    airboat.go(name, home)
+                    return true, "[airboat] Driving you to home " .. number ..
+                        "! (if you are the driver of an airboat)"
+                end
+                return false, "Set home " .. number .. " using /sethome " .. number
+            end,
+    })
+end
 
 function airboat_entity:on_step()
     local object_v = self.object:get_velocity()
@@ -159,13 +194,19 @@ function airboat_entity:on_step()
     if self.driver then
         local driver_objref = minetest.get_player_by_name(self.driver)
         if driver_objref then
+            -- If the player is controlling, we don't override it.
+            -- Otherwise, if there is a destination, go towards it
             local ctrl = driver_objref:get_player_control()
+
+            local dest = airboat.player_targets[self.driver]
+
+            local ctrl_acc = ctrl.up or ctrl.down
 
             -- Forward / backward
             if ctrl.up and ctrl.down then
                 vx_acc = vx_acc + acceleration * vx_acc_mult
                 vz_acc = vz_acc + acceleration * vz_acc_mult
-                if not self.auto then
+                if not dest and not self.auto then
                     self.auto = true
                     minetest.chat_send_player(self.driver, "[airboat] Cruise on")
                 end
@@ -178,11 +219,13 @@ function airboat_entity:on_step()
                     minetest.chat_send_player(self.driver, "[airboat] Cruise off")
                 end
                 horiz_stop = false
-            elseif ctrl.up or self.auto then
+            elseif ctrl.up or (self.auto and not dest) then
                 vx_acc = vx_acc + acceleration * vx_acc_mult
                 vz_acc = vz_acc + acceleration * vz_acc_mult
                 horiz_stop = false
             end
+
+            local ctrl_rot = ctrl.left or ctrl.right
 
             if ctrl.left and ctrl.right then
                 -- Do nothing
@@ -198,6 +241,76 @@ function airboat_entity:on_step()
             elseif ctrl.sneak then
                 vy_acc = vy_acc - acceleration_y
                 horiz_stop = false
+            end
+
+            -- If the player isn't controlling, we just rotate and go towards the dest.
+            if dest and not ctrl_rot and not ctrl_acc then
+                -- dot between horiz_vel and the direction
+                local horiz_vel_dir = object_v.x * vx_acc_mult + object_v.z * vz_acc_mult
+                -- minetest.chat_send_player(self.driver, "[airboat] Getting you to your destination")
+                local pos = self.object:get_pos()
+
+                local target_dir_x = dest.x - pos.x
+                local target_dir_z = dest.z - pos.z
+
+                local tdir_len = math.sqrt(target_dir_x * target_dir_x + target_dir_z * target_dir_z)
+
+                -- normalise
+                local tdir_x = target_dir_x / tdir_len
+                local tdir_z = target_dir_z / tdir_len
+
+                -- Get the dot product of v*_acc_mult and tdir_*
+                -- and turn if it is < 0.95
+                local dot = tdir_x * vx_acc_mult + tdir_z * vz_acc_mult
+                local left_dot = tdir_x * -math.sin(new_yaw + yaw_speed) + tdir_z * math.cos(new_yaw + yaw_speed)
+                local right_dot = tdir_x * -math.sin(new_yaw - yaw_speed) + tdir_z * math.cos(new_yaw - yaw_speed)
+
+                if tdir_len > 0.5 then
+                    if left_dot > dot then
+                        new_yaw = new_yaw + yaw_speed
+                    elseif right_dot > dot then
+                        new_yaw = new_yaw - yaw_speed
+                    end
+                end
+
+                if tdir_len < 2 then
+                    if pos.y > dest.y + 2 then
+                        -- Go down
+                        vy_acc = vy_acc - acceleration_y
+                        horiz_stop = true
+                    else
+                        minetest.chat_send_player(self.driver, "[airboat] Arrived; route reset")
+                        -- reset destination
+                        airboat.cancel_go(self.driver)
+                        horiz_stop = true
+                    end
+                -- Go high
+                else
+                    if pos.y < dest.y + 10 then
+                        vy_acc = vy_acc + acceleration_y
+                    end
+                    if pos.y > dest.y + 3 then
+                        if
+                            dot > 0.95
+                            and (tdir_len > 50
+                                or (tdir_len > 10 and horiz_vel_dir < 2.5)
+                                or (tdir_len > 2.5 and horiz_vel_dir < 0.5)
+                                or horiz_vel_dir < 0.09
+                            ) then
+                            -- accelerate
+                            vx_acc = vx_acc + acceleration * vx_acc_mult
+                            vz_acc = vz_acc + acceleration * vz_acc_mult
+                            horiz_stop = false
+                        elseif (horiz_vel_dir > 3 and tdir_len < 50)
+                            or (horiz_vel_dir > 1 and tdir_len < 10)
+                            or (horiz_vel_dir > 0.1 and tdir_len < 2.5) then
+                            -- Slow down
+                            vx_acc = vx_acc - acceleration * vx_acc_mult
+                            vz_acc = vz_acc - acceleration * vz_acc_mult
+                            horiz_stop = false
+                        end
+                    end
+                end
             end
         else
             -- Player left server while driving
