@@ -23,7 +23,7 @@ end
 
 -- Airboat entity
 
-local airboat = {
+local airboat_entity = {
 		initial_properties = {
 		physical = true,
 		collide_with_objects = false, -- Workaround fix for a MT engine bug
@@ -43,7 +43,7 @@ local airboat = {
 }
 
 
-function airboat.on_rightclick(self, clicker)
+function airboat_entity.on_rightclick(self, clicker)
 	if not clicker or not clicker:is_player() then
 		return
 	end
@@ -81,12 +81,12 @@ function airboat.on_rightclick(self, clicker)
 end
 
 
-function airboat.on_activate(self, staticdata, dtime_s)
+function airboat_entity.on_activate(self, staticdata, dtime_s)
 	self.object:set_armor_groups({immortal = 1})
 end
 
 
-function airboat.on_punch(self, puncher)
+function airboat_entity.on_punch(self, puncher)
 	if not puncher or not puncher:is_player() or self.removed then
 		return
 	end
@@ -117,7 +117,7 @@ function airboat.on_punch(self, puncher)
 end
 
 
-function airboat.on_step(self, dtime)
+function airboat_entity.on_step(self, dtime)
 	self.v = get_v(self.object:getvelocity()) * get_sign(self.v)
 	self.vy = self.object:getvelocity().y
 
@@ -215,7 +215,7 @@ function airboat.on_step(self, dtime)
 end
 
 
-minetest.register_entity("airboat:airboat", airboat)
+minetest.register_entity("airboat:airboat", airboat_entity)
 
 
 -- Craftitem
