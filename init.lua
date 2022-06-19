@@ -24,12 +24,12 @@ end
 -- Airboat entity
 
 local airboat_entity = {
-        initial_properties = {
+    initial_properties = {
         physical = true,
         collide_with_objects = false, -- Workaround fix for a MT engine bug
-        collisionbox = {-0.85, -1.5, -0.85, 0.85, 1.5, 0.85},
+        collisionbox = {-1.4, -2, -1.4, 1.4, 1.8, 1.4},
         visual = "wielditem",
-        visual_size = {x = 2.0, y = 2.0}, -- Scale up of nodebox is these * 1.5
+        visual_size = {x = 2.65, y = 2.65}, -- Scale up of nodebox is these * 1.5, so 4
         textures = {"airboat:airboat_nodebox"},
     },
 
