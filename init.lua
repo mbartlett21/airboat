@@ -170,6 +170,20 @@ if sethome then
                 return false, "Set home " .. number .. " using /sethome " .. number
             end,
     })
+    minetest.register_chatcommand("drivecancel", {
+            description = "Cancel driving",
+            privs = { },
+            func = function(name, param)
+                name = name or "" -- fallback to blank name if nil
+                local number = param and tonumber(param) or 1
+                local player = minetest.get_player_by_name(name)
+                if not player then
+                    return false, "Player not found!"
+                end
+                airboat.cancel_go(player)
+                return true, "[airboat] Route cancelled"
+            end,
+    })
 end
 
 function airboat_entity:on_step()
