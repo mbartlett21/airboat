@@ -3,11 +3,11 @@
 
 local acceleration = 2
 
-local friction = 0.1
+local friction = 0.2
 
 local acceleration_y = 1
 
-local friction_y = 0.25
+local friction_y = 0.35
 
 local yaw_speed = 0.015
 
