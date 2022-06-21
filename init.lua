@@ -217,23 +217,28 @@ function airboat_entity:on_step()
             local ctrl_acc = ctrl.up or ctrl.down
 
             -- Forward / backward
-            if ctrl.up and ctrl.down then
-                vx_acc = vx_acc + acceleration * vx_acc_mult
-                vz_acc = vz_acc + acceleration * vz_acc_mult
-                if not dest and not self.auto then
-                    self.auto = true
-                    minetest.chat_send_player(self.driver, "[airboat] Cruise on")
-                end
-                horiz_stop = false
-            elseif ctrl.down then
-                vx_acc = vx_acc - acceleration * vx_acc_mult
-                vz_acc = vz_acc - acceleration * vz_acc_mult
+            if ctrl.down and not ctrl.up then
+                vx_acc = vx_acc - acceleration * vx_acc_mult * 1.1
+                vz_acc = vz_acc - acceleration * vz_acc_mult * 1.1
                 if self.auto then
                     self.auto = false
                     minetest.chat_send_player(self.driver, "[airboat] Cruise off")
                 end
+                if dest then
+                    dest = nil
+                    airboat.player_targets[self.driver] = nil
+                    minetest.chat_send_player(self.driver, "[airboat] Route cancelled")
+                end
                 horiz_stop = false
-            elseif ctrl.up or (self.auto and not dest) then
+            elseif (ctrl.up and ctrl.down) or (self.auto and not dest) then -- Cruise is more efficient...
+                vx_acc = vx_acc + acceleration * vx_acc_mult * 1.2
+                vz_acc = vz_acc + acceleration * vz_acc_mult * 1.2
+                horiz_stop = false
+                if not dest and not self.auto then
+                    self.auto = true
+                    minetest.chat_send_player(self.driver, "[airboat] Cruise on")
+                end
+            elseif ctrl.up then
                 vx_acc = vx_acc + acceleration * vx_acc_mult
                 vz_acc = vz_acc + acceleration * vz_acc_mult
                 horiz_stop = false
@@ -288,7 +293,7 @@ function airboat_entity:on_step()
                 end
 
                 if tdir_len < 2 then
-                    if pos.y > dest.y + 2 then
+                    if pos.y > dest.y + 4 then
                         -- Go down
                         vy_acc = vy_acc - acceleration_y
                         horiz_stop = true
@@ -300,27 +305,27 @@ function airboat_entity:on_step()
                     end
                 -- Go high
                 else
-                    if pos.y < dest.y + 10 then
+                    if pos.y < dest.y + 10 and tdir_len > 3 then
                         vy_acc = vy_acc + acceleration_y
                     end
                     if pos.y > dest.y + 3 then
                         if
                             dot > 0.95
                             and (tdir_len > 50
-                                or (tdir_len > 10 and horiz_vel_dir < 2.5)
-                                or (tdir_len > 2.5 and horiz_vel_dir < 0.5)
-                                or horiz_vel_dir < 0.09
+                                or (tdir_len > 10 and horiz_vel_dir < 4)
+                                or (tdir_len > 2.5 and horiz_vel_dir < 1)
+                                or horiz_vel_dir < 0.2
                             ) then
                             -- accelerate
-                            vx_acc = vx_acc + acceleration * vx_acc_mult
-                            vz_acc = vz_acc + acceleration * vz_acc_mult
+                            vx_acc = vx_acc + acceleration * vx_acc_mult * 1.2
+                            vz_acc = vz_acc + acceleration * vz_acc_mult * 1.2
                             horiz_stop = false
-                        elseif (horiz_vel_dir > 3 and tdir_len < 50)
-                            or (horiz_vel_dir > 1 and tdir_len < 10)
-                            or (horiz_vel_dir > 0.1 and tdir_len < 2.5) then
+                        elseif (horiz_vel_dir > 5 and tdir_len < 50)
+                            or (horiz_vel_dir > 2 and tdir_len < 10)
+                            or (horiz_vel_dir > 1 and tdir_len < 2.5) then
                             -- Slow down
-                            vx_acc = vx_acc - acceleration * vx_acc_mult
-                            vz_acc = vz_acc - acceleration * vz_acc_mult
+                            vx_acc = vx_acc - acceleration * vx_acc_mult * 1.3
+                            vz_acc = vz_acc - acceleration * vz_acc_mult * 1.3
                             horiz_stop = false
                         end
                     end
