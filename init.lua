@@ -11,6 +11,8 @@ local friction_y = 0.35
 
 local yaw_speed = 0.015
 
+local hyaw_speed = yaw_speed * 0.1
+
 -- Functions
 
 local function airboat_manage_attachment(player, obj, is_passenger)
@@ -281,14 +283,20 @@ function airboat_entity:on_step()
                 -- Get the dot product of v*_acc_mult and tdir_*
                 -- and turn if it is < 0.95
                 local dot = tdir_x * vx_acc_mult + tdir_z * vz_acc_mult
+                local left_h_dot = tdir_x * -math.sin(new_yaw + hyaw_speed) + tdir_z * math.cos(new_yaw + hyaw_speed)
                 local left_dot = tdir_x * -math.sin(new_yaw + yaw_speed) + tdir_z * math.cos(new_yaw + yaw_speed)
+                local right_h_dot = tdir_x * -math.sin(new_yaw - hyaw_speed) + tdir_z * math.cos(new_yaw - hyaw_speed)
                 local right_dot = tdir_x * -math.sin(new_yaw - yaw_speed) + tdir_z * math.cos(new_yaw - yaw_speed)
 
-                if tdir_len > 0.5 then
-                    if left_dot > dot then
+                if tdir_len > 4 then
+                    if left_dot > dot and left_dot > left_h_dot then
                         new_yaw = new_yaw + yaw_speed
-                    elseif right_dot > dot then
+                    elseif left_h_dot > dot then
+                        new_yaw = new_yaw + hyaw_speed
+                    elseif right_dot > dot and right_dot > right_h_dot then
                         new_yaw = new_yaw - yaw_speed
+                    elseif right_h_dot > dot then
+                        new_yaw = new_yaw - hyaw_speed
                     end
                 end
 
